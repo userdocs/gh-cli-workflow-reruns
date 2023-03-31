@@ -1,0 +1,57 @@
+name: example workflow
+
+on:
+  workflow_dispatch:
+    inputs:
+      skip_rerun:
+        description: "Skip rerun?"
+        required: true
+        type: boolean
+      retries:
+        description: 'Number of rerun retries'
+        required: true
+        default: '5'
+        type: choice
+        options: [ "1", "2", "3", "4", "5", "6", "7", "8", "9" ]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        name: [workflow-example]
+        conclusion: ["job-success", "job-failure"]
+    steps:
+      - name: pass
+        if: matrix.conclusion == 'job-success'
+        run: exit
+
+      - name: fail
+        if: matrix.conclusion == 'job-failure' && github.run_attempt < 3
+        run: exit 1
+
+    name: Dummy build job
+
+  release:
+    if: always()
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: pass
+        run: exit
+
+    name: Dummy release job
+
+  rerun-on-failure:
+    if: failure() && inputs.skip_rerun == '0'
+    name: rerun-on-failure
+    needs: release
+    permissions:
+      actions: write
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+    steps:
+      - uses: actions/checkout@v3
+      - name: Trigger rerun workflow on job failures
+        run: gh workflow run rerun.yml -f run_id=${{ github.run_id }} -f attempts=${{ github.run_attempt }} -f retries=${{ inputs.retries }}
