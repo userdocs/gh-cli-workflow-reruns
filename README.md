@@ -67,7 +67,7 @@ on:
 
 This would go at the end of you workflow, as a separate job, that you want to make sure completes. It will call the `rerun.yml` and pass some critical inputs.
 
-🟧 The one thing you need to make sure is customised is the `needs: release` to match the job name it is tracking. No other customisations are required.
+🟧 The one thing you need to make sure is customized is the `needs: release` to match the job name it is tracking. No other customizations are required.
 
 ```yml
   rerun-on-failure:
