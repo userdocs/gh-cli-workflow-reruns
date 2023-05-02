@@ -82,8 +82,12 @@ This would go at the end of you workflow, as a separate job, that you want to ma
     steps:
       - uses: actions/checkout@v3
       - name: Trigger rerun workflow on job failures
-        run: gh workflow run rerun.yml -f run_id=${{ github.run_id }} -f attempts=${{ github.run_attempt }}
+        run: |
+          inputs_retries="${{ inputs.retries }}"
+          gh workflow run rerun.yml -f run_id=${{ github.run_id }} -f attempts=${{ github.run_attempt }} -f retries=${inputs_retries:-5}
 ```
+
+🟦 We set this `inputs_retries="${{ inputs.retries }}"` so that it also works when on a schedule or other non `workflow_dispatch` method to call the workflow.
 
 🟨 Since we are using [gh cli](https://cli.github.com/manual/index) and not an action we can expand the potential of the job. One example is if you wanted to add more inputs to be passed you can add them like this
 
