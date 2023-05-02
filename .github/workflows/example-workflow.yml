@@ -13,6 +13,7 @@ on:
         default: '5'
         type: choice
         options: [ "1", "2", "3", "4", "5", "6", "7", "8", "9" ]
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -54,4 +55,6 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Trigger rerun workflow on job failures
-        run: gh workflow run rerun.yml -f run_id=${{ github.run_id }} -f attempts=${{ github.run_attempt }} -f retries=${{ inputs.retries }}
+        run: |
+          inputs_retries="${{ inputs.retries }}"
+          gh workflow run rerun.yml -f run_id=${{ github.run_id }} -f attempts=${{ github.run_attempt }} -f retries=${inputs_retries:-5}
