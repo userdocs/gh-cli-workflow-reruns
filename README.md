@@ -124,7 +124,7 @@ jobs:
         uses: actions/checkout@v3
 
       - name: gh cli rerun and summaries
-        if: inputs.attempts < 5
+        if: inputs.attempts <= 5
         run: |
           failures="$(gh run view ${{ inputs.run_id }} --log-failed | sed "s,\x1B\[[0-9;]*[a-zA-Z],,g")"
           gh run rerun ${{ inputs.run_id }} --failed
