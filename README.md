@@ -27,7 +27,7 @@ if: matrix.conclusion == 'job-failure' && github.run_attempt < 3
 Otherwise the `rerun.yml` would attempt to rerun up to 5 times before it stops.
 
 ```yml
-if: inputs.attempts < 5
+if: inputs.attempts <= 5
 ```
 
 It does this using this end of workflow job and triggering the workflow file `rerun.yml` if there were any failures `if:  failure()`
@@ -56,7 +56,8 @@ on:
         options: [ "1", "2", "3", "4", "5", "6", "7", "8", "9" ]
 ```
 
-🟦 When manually running the job via `workflow_dispatch` you can set two options.
+>[!NOTE] 
+> When manually running the job via `workflow_dispatch` you can set two options.
 
 * `skip_rerun` - a true or false (default false) options to bypass the rerun.
 * `retries` - the number of retry attempts as a list of options, 1 to 9 times.
@@ -67,7 +68,8 @@ on:
 
 This would go at the end of you workflow, as a separate job, that you want to make sure completes. It will call the `rerun.yml` and pass some critical inputs.
 
-🟧 The one thing you need to make sure is customized is the `needs: release` to match the job name it is tracking. No other customizations are required.
+>[!WARNING] 
+> The one thing you need to make sure is customized is the `needs: release` to match the job name it is tracking. No other customizations are required.
 
 ```yml
   rerun-on-failure:
@@ -87,9 +89,11 @@ This would go at the end of you workflow, as a separate job, that you want to ma
           gh workflow run rerun.yml -f run_id=${{ github.run_id }} -f attempts=${{ github.run_attempt }} -f retries=${inputs_retries:-1}
 ```
 
-🟦 We set this `inputs_retries="${{ inputs.retries }}"` so that it also works when on a schedule or other non `workflow_dispatch` method to call the workflow.
+>[!NOTE] 
+> We set this `inputs_retries="${{ inputs.retries }}"` so that it also works when on a schedule or other non `workflow_dispatch` method to call the workflow.
 
-🟨 Since we are using [gh cli](https://cli.github.com/manual/index) and not an action we can expand the potential of the job. One example is if you wanted to add more inputs to be passed you can add them like this
+>[!TIP] 
+> Since we are using [gh cli](https://cli.github.com/manual/index) and not an action we can expand the potential of the job. One example is if you wanted to add more inputs to be passed you can add them like this
 
 ```
 -f name=value
