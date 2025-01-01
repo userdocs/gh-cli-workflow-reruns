@@ -1,4 +1,4 @@
-name: example workflow
+name: example workflow via composite action
 
 on:
   workflow_dispatch:
@@ -47,23 +47,23 @@ jobs:
 
     name: Dummy release job
 
-  ci-auto-rerun-failed-jobs:
+  ci-auto-rerun-failed-jobs-action:
     if: failure() && (github.event.inputs.skip_rerun || 'false') == 'false'
     needs: [build, release]
     concurrency:
-      group: ci-auto-rerun-failed-jobs
+      group: ci-auto-rerun-failed-jobs-action
       cancel-in-progress: true
     permissions:
       actions: write
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: "${{ secrets.AUTO_RERUN || github.token }}"
-      github_repo: "" # To use ci-auto-rerun-failed-jobs.yml hosted in a remote repository else default to the current repository. Requires PAT token AUTO_RERUN
+      github_repo: "" # To use ci-auto-rerun-failed-jobs-action.yml hosted in a remote repository else default to the current repository. Requires PAT token AUTO_RERUN
     steps:
       - uses: actions/checkout@v4
-      - name: ci-auto-rerun-failed-jobs via ${{ env.github_repo || github.repository }}
+      - name: ci-auto-rerun-failed-jobs-action via ${{ env.github_repo || github.repository }}
         run: >
-          gh workflow run ci-auto-rerun-failed-jobs.yml
+          gh workflow run ci-auto-rerun-failed-jobs-action.yml
           --repo "${{ env.github_repo || github.repository }}"
           -f github_repo=${{ github.repository }}
           -f run_id=${{ github.run_id }}

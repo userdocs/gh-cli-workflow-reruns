@@ -1,0 +1,48 @@
+name: ci auto rerun failed jobs
+description: ci auto rerun failed jobs
+inputs:
+  run_id:
+    description: "The run id of the workflow to rerun"
+    required: true
+  attempts:
+    description: "The number of attempts to rerun the workflow"
+    required: true
+  retries:
+    description: "The number of retries to rerun the workflow"
+    required: true
+  github_repo:
+    description: "The repository to rerun the workflow"
+    required: false
+  distinct_id:
+    description: "The distinct id of the workflow to rerun"
+    required: false
+runs:
+  using: "composite"
+  steps:
+    - name: gh cli rerun and summaries ${{ inputs.distinct_id }}
+      shell: bash
+      if: inputs.attempts <= inputs.retries
+      run: |
+        github_repo="${{ inputs.github_repo || github.repository }}"
+        failures="$(gh run view ${{ inputs.run_id }} --log-failed --repo "${github_repo}" | sed "s,\x1B\[[0-9;]*[a-zA-Z],,g")"
+
+        if [[ -z "${failures}" ]]; then
+            failures="$(gh run view ${{ inputs.run_id }} --repo "${github_repo}" | sed "s,\x1B\[[0-9;]*[a-zA-Z],,g")"
+        fi
+
+        if [[ "${{ inputs.retries }}" -ge "2" ]]; then
+            gh run rerun "${{ inputs.run_id }}" --failed --debug --repo "${github_repo}"
+        else
+            gh run rerun "${{ inputs.run_id }}" --failed --repo "${github_repo}"
+        fi
+
+        printf '%b\n' "# gh cli workflow reruns" >> $GITHUB_STEP_SUMMARY
+        printf '\n%b\n' ":octocat: Here is a summary of inputs from the failed workflow" >> $GITHUB_STEP_SUMMARY
+        printf '\n%b\n' "🟥 Failures at:\n\n\`\`\`log\n${failures}\n\`\`\`" >> $GITHUB_STEP_SUMMARY
+        printf '\n%b\n' "🟦 Attempt: ${{ inputs.attempts }} - Rerun failed jobs in ${{ inputs.run_id }} :hammer:" >> $GITHUB_STEP_SUMMARY
+
+        if gh run watch ${{ inputs.run_id }} --exit-status --repo "${github_repo}"; then
+            printf '\n%b\n' "✅ Attempt: ${{ inputs.attempts }} succeeded 😺" >> $GITHUB_STEP_SUMMARY
+        else
+            printf '\n%b\n' "❌ Attempt: ${{ inputs.attempts }} failed 😾" >> $GITHUB_STEP_SUMMARY
+        fi
