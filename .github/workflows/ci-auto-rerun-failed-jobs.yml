@@ -33,6 +33,19 @@ jobs:
       - name: Host - Checkout action ${{ inputs.distinct_id }}
         uses: actions/checkout@v4
 
+      - name: config gh copilot cli summary
+        env:
+            COPILOT_CLI: ${{ secrets.COPILOT_CLI }}
+        if: ${{ env.COPILOT_CLI != '' }}
+        run: | # only works with oauth and not PAT https://github.com/github/gh-copilot/issues/1
+          unset GITHUB_TOKEN GH_TOKEN
+          printf '%s' "${{ secrets.COPILOT_CLI }}" | gh auth login --with-token
+          mkdir -p ${HOME}/.config/{gh,gh-copilot}
+          printf '%b\n' 'optional_analytics: false\nsuggest_execute_confirm_default: false' > ${HOME}/.config/gh-copilot/config.yml
+          printf '%s\n' "GITHUB_TOKEN=$(gh auth token --hostname github.com)" >> $GITHUB_ENV
+          printf '%s\n' "GH_TOKEN=$(gh auth token --hostname github.com)" >> $GITHUB_ENV
+          gh extension install github/gh-copilot --force
+
       - name: gh cli rerun and summaries ${{ inputs.distinct_id }}
         if: inputs.attempts <= inputs.retries
         run: |
@@ -47,6 +60,12 @@ jobs:
               gh run rerun "${{ inputs.run_id }}" --failed --debug --repo "${github_repo}"
           else
               gh run rerun "${{ inputs.run_id }}" --failed --repo "${github_repo}"
+          fi
+
+          if [[ -n "${{ secrets.COPILOT_CLI }}" ]]; then
+              gh copilot explain "${failures}" >> $GITHUB_STEP_SUMMARY
+          else
+              printf '%s\n' "COPILOT_CLI secret is not set" >> $GITHUB_STEP_SUMMARY
           fi
 
           printf '%b\n' "# gh cli workflow reruns" >> $GITHUB_STEP_SUMMARY
