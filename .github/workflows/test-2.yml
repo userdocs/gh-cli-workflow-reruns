@@ -1,0 +1,52 @@
+name: test 1.2 - gh copilot info on failed job
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: "run_id"
+        required: true
+        type: string
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_TOKEN: ${{ github.token }}
+      COPILOT_CLI: ${{ secrets.COPILOT_CLI }}
+      run_id: ${{ github.event.inputs.run_id }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: gh copilot cli part 1
+        if: ${{ env.COPILOT_CLI != '' }}
+        run: |
+          # Only works with oauth and not PAT https://github.com/github/gh-copilot/issues/1
+          # 1: if these are set: Unset GITHUB_TOKEN and GH_TOKEN to avoid auth errors with the gh CLI as it will try to use these first
+          unset GITHUB_TOKEN GH_TOKEN
+          # 2: Login to gh CLI with the COPILOT secret using the oauth token taken from elsewhere using: gh auth token --hostname github.com
+          printf '%s' "${COPILOT_CLI}" | gh auth login --with-token
+          # 3: Create the config file for gh copilot to bypass the prompt for analytics and confirmation. Could not find non interactive flag for this
+          mkdir -p ${HOME}/.config/{gh,gh-copilot}
+          printf '%b\n' 'optional_analytics: false\nsuggest_execute_confirm_default: false' > ${HOME}/.config/gh-copilot/config.yml
+          # 4: Set the GITHUB_TOKEN and GH_TOKEN environment variables for the gh CLI to use
+          printf '%s\n' "GITHUB_TOKEN=$(gh auth token --hostname github.com)" >> $GITHUB_ENV
+          printf '%s\n' "GH_TOKEN=$(gh auth token --hostname github.com)" >> $GITHUB_ENV
+          # 5: Install the gh copilot extension
+          gh extension install github/gh-copilot --force
+
+      - name: gh copilot cli part 2
+        run: |
+          # Test the auth status
+          gh auth status
+          # Test the gh copilot extension by printing a summary
+          summary=$(gh run view ${run_id} --log-failed | sed "s,\x1B\[[0-9;]*[a-zA-Z],,g")
+          if [[ -n "${COPILOT_CLI}" ]]; then
+              gh copilot explain "${summary}" >> $GITHUB_STEP_SUMMARY
+          else
+              printf '%s\n' "COPILOT_CLI secret is not set" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          printf '\n%b\n' "🟥 Failures at:\n\n\`\`\`log\n${summary}\n\`\`\`" >> $GITHUB_STEP_SUMMARY

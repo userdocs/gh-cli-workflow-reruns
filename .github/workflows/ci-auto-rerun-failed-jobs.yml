@@ -29,13 +29,18 @@ jobs:
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: "${{ secrets.AUTO_RERUN || github.token }}"
+      COPILOT_CLI: ${{ secrets.COPILOT_CLI }}
+      run_id: ${{ inputs.run_id }}
+      attempts: ${{ inputs.attempts }}
+      retries: ${{ inputs.retries }}
+      github_repo: ${{ inputs.github_repo || github.repository }}
     steps:
       - name: Host - Checkout action ${{ inputs.distinct_id }}
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: config gh copilot cli summary
-        env:
-            COPILOT_CLI: ${{ secrets.COPILOT_CLI }}
         if: ${{ env.COPILOT_CLI != '' }}
         run: | # only works with oauth and not PAT https://github.com/github/gh-copilot/issues/1
           unset GITHUB_TOKEN GH_TOKEN
@@ -49,17 +54,16 @@ jobs:
       - name: gh cli rerun and summaries ${{ inputs.distinct_id }}
         if: inputs.attempts <= inputs.retries
         run: |
-          github_repo="${{ inputs.github_repo || github.repository }}"
-          failures="$(gh run view ${{ inputs.run_id }} --log-failed --repo "${github_repo}" | sed "s,\x1B\[[0-9;]*[a-zA-Z],,g")"
+          failures="$(gh run view ${run_id} --log-failed --repo "${github_repo}" | sed "s,\x1B\[[0-9;]*[a-zA-Z],,g")"
 
           if [[ -z "${failures}" ]]; then
-              failures="$(gh run view ${{ inputs.run_id }} --repo "${github_repo}" | sed "s,\x1B\[[0-9;]*[a-zA-Z],,g")"
+              failures="$(gh run view ${run_id} --repo "${github_repo}" | sed "s,\x1B\[[0-9;]*[a-zA-Z],,g")"
           fi
 
-          if [[ "${{ inputs.retries }}" -ge "2" ]]; then
-              gh run rerun "${{ inputs.run_id }}" --failed --debug --repo "${github_repo}"
+          if [[ "${retries}" -ge "2" ]]; then
+              gh run rerun "${run_id}" --failed --debug --repo "${github_repo}"
           else
-              gh run rerun "${{ inputs.run_id }}" --failed --repo "${github_repo}"
+              gh run rerun "${run_id}" --failed --repo "${github_repo}"
           fi
 
           if [[ -n "${{ secrets.COPILOT_CLI }}" ]]; then
@@ -71,10 +75,10 @@ jobs:
           printf '%b\n' "# gh cli workflow reruns" >> $GITHUB_STEP_SUMMARY
           printf '\n%b\n' ":octocat: Here is a summary of inputs from the failed workflow" >> $GITHUB_STEP_SUMMARY
           printf '\n%b\n' "🟥 Failures at:\n\n\`\`\`log\n${failures}\n\`\`\`" >> $GITHUB_STEP_SUMMARY
-          printf '\n%b\n' "🟦 Attempt: ${{ inputs.attempts }} - Rerun failed jobs in ${{ inputs.run_id }} :hammer:" >> $GITHUB_STEP_SUMMARY
+          printf '\n%b\n' "🟦 Attempt: ${attempts} - Rerun failed jobs in ${run_id} :hammer:" >> $GITHUB_STEP_SUMMARY
 
-          if gh run watch ${{ inputs.run_id }} --exit-status --repo "${github_repo}"; then
-              printf '\n%b\n' "✅ Attempt: ${{ inputs.attempts }} succeeded 😺" >> $GITHUB_STEP_SUMMARY
+          if gh run watch ${run_id} --exit-status --repo "${github_repo}"; then
+              printf '\n%b\n' "✅ Attempt: ${attempts} succeeded 😺" >> $GITHUB_STEP_SUMMARY
           else
-              printf '\n%b\n' "❌ Attempt: ${{ inputs.attempts }} failed 😾" >> $GITHUB_STEP_SUMMARY
+              printf '\n%b\n' "❌ Attempt: ${attempts} failed 😾" >> $GITHUB_STEP_SUMMARY
           fi
