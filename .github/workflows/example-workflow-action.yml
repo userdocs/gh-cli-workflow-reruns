@@ -68,9 +68,9 @@ jobs:
       - name: ci-auto-rerun-failed-jobs-action via ${{ env.github_repo || github.repository }}
         run: >
           gh workflow run ci-auto-rerun-failed-jobs-action.yml
-          --repo "${{ env.github_repo || github.repository }}"
-          -f github_repo=${{ github.repository }}
-          -f run_id=${{ github.run_id }}
-          -f attempts=${{ github.run_attempt }}
+          --repo "${github_repo:-$GITHUB_REPOSITORY}"
+          -f github_repo=${GITHUB_REPOSITORY}
+          -f run_id=${GITHUB_RUN_ID}
+          -f attempts=${GITHUB_RUN_ATTEMPT}
           -f retries=${retries}
           -f distinct_id=${distinct_id}
