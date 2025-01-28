@@ -76,7 +76,7 @@ This would go at the end of you workflow, as a separate job, that you want to ma
 > The one thing you need to make sure is customized is the `needs: [build, release]` to match the job name it is tracking. No other customizations are required.
 > This job will work for `workflow_dispatch` and `schedule` jobs.
 
-```yml
+```yaml
 ci-auto-rerun-failed-jobs:
     if: failure() && (github.event.inputs.skip_rerun || 'false') == 'false'
     needs: [build, release]
@@ -85,21 +85,25 @@ ci-auto-rerun-failed-jobs:
         cancel-in-progress: true
     permissions:
         actions: write
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     env:
         GH_TOKEN: "${{ secrets.AUTO_RERUN || github.token }}"
         github_repo: "" # To use ci-auto-rerun-failed-jobs.yml hosted in a remote repository else default to the current repository. Requires PAT token AUTO_RERUN
+        retries: ${{ needs.scheduled_defaults.outputs.retries || '3' }}
+        distinct_id: ${{ github.event.inputs.distinct_id }}
     steps:
         - uses: actions/checkout@v4
+          with:
+              persist-credentials: false
         - name: ci-auto-rerun-failed-jobs via ${{ env.github_repo || github.repository }}
           run: >
-              gh workflow run ci-auto-rerun-failed-jobs.yml
-              --repo "${{ env.github_repo || github.repository }}"
-              -f github_repo=${{ github.repository }}
-              -f run_id=${{ github.run_id }}
-              -f attempts=${{ github.run_attempt }}
-              -f retries=${{ github.event.inputs.retries || '1' }}
-              -f distinct_id=${{ github.event.inputs.distinct_id }}
+              gh workflow run ci-auto-rerun-failed-jobs-action.yml
+              --repo "${github_repo:-$GITHUB_REPOSITORY}"
+              -f github_repo=${GITHUB_REPOSITORY}
+              -f run_id=${GITHUB_RUN_ID}
+              -f attempts=${GITHUB_RUN_ATTEMPT}
+              -f retries=${retries}
+              -f distinct_id=${distinct_id}
 ```
 
 > [!TIP]
