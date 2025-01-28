@@ -18,9 +18,13 @@ on:
   # schedule:
   #   - cron: "*/5 * * * *" # every 5 minutes
 
+permissions: {}
+
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     strategy:
       fail-fast: false
       matrix:
