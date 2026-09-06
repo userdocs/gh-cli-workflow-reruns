@@ -52,7 +52,10 @@ jobs:
     name: Dummy release job
 
   ci-auto-rerun-failed-jobs:
-    if: failure() && (github.event.inputs.skip_rerun || 'false') == 'false'
+    if: >
+      failure()
+      && (github.event.inputs.skip_rerun || 'false') == 'false'
+      && github.run_attempt <= (github.event.inputs.retries || 1)
     needs: [build, release]
     concurrency:
       group: ci-auto-rerun-failed-jobs
@@ -64,7 +67,6 @@ jobs:
       GH_TOKEN: "${{ secrets.AUTO_RERUN || github.token }}"
       github_repo: "" # To use ci-auto-rerun-failed-jobs.yml hosted in a remote repository else default to the current repository. Requires PAT token AUTO_RERUN
       retries: ${{ github.event.inputs.retries || '1' }}
-      distinct_id: ${{ github.event.inputs.distinct_id }}
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
